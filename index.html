@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>THE BEAR — QR Switcher</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #1a1917;
+      color: #DFDFDE;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    .logo {
+      font-size: 13px;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: #17b9a8;
+      margin-bottom: 8px;
+    }
+
+    h1 {
+      font-size: 22px;
+      font-weight: 600;
+      margin-bottom: 40px;
+      text-align: center;
+    }
+
+    /* PIN screen */
+    #pin-screen {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
+      width: 100%;
+      max-width: 320px;
+    }
+
+    #pin-screen p {
+      font-size: 14px;
+      color: #999;
+      text-align: center;
+    }
+
+    #pin-input {
+      width: 100%;
+      padding: 14px 16px;
+      font-size: 24px;
+      letter-spacing: 0.3em;
+      text-align: center;
+      background: #2a2926;
+      border: 1px solid #3a3936;
+      border-radius: 10px;
+      color: #DFDFDE;
+      outline: none;
+    }
+
+    #pin-input:focus { border-color: #17b9a8; }
+
+    #pin-error {
+      color: #ff6b6b;
+      font-size: 13px;
+      display: none;
+    }
+
+    /* Main screen */
+    #main-screen { display: none; width: 100%; max-width: 360px; }
+
+    .status-bar {
+      background: #2a2926;
+      border-radius: 10px;
+      padding: 14px 16px;
+      margin-bottom: 28px;
+      font-size: 13px;
+      color: #999;
+    }
+
+    .status-bar span {
+      display: block;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: #17b9a8;
+      margin-bottom: 4px;
+    }
+
+    #current-url {
+      word-break: break-all;
+      color: #DFDFDE;
+      font-size: 13px;
+    }
+
+    .destinations {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      margin-bottom: 28px;
+    }
+
+    .dest-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      padding: 16px 18px;
+      background: #2a2926;
+      border: 1px solid #3a3936;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: border-color 0.15s, background 0.15s;
+      text-align: left;
+      width: 100%;
+    }
+
+    .dest-btn:hover { border-color: #17b9a8; }
+
+    .dest-btn.active {
+      border-color: #17b9a8;
+      background: #1e2e2d;
+    }
+
+    .dest-btn .label {
+      font-size: 16px;
+      font-weight: 600;
+      color: #DFDFDE;
+      margin-bottom: 3px;
+    }
+
+    .dest-btn .url {
+      font-size: 12px;
+      color: #888;
+    }
+
+    .dest-btn .active-badge {
+      display: none;
+      font-size: 11px;
+      color: #17b9a8;
+      margin-top: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .dest-btn.active .active-badge { display: block; }
+
+    #feedback {
+      font-size: 13px;
+      text-align: center;
+      min-height: 20px;
+      color: #17b9a8;
+    }
+
+    #feedback.error { color: #ff6b6b; }
+
+    .spinner {
+      display: inline-block;
+      width: 14px;
+      height: 14px;
+      border: 2px solid #17b9a8;
+      border-top-color: transparent;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      vertical-align: middle;
+      margin-right: 6px;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .lock-btn {
+      margin-top: 20px;
+      background: none;
+      border: none;
+      color: #555;
+      font-size: 12px;
+      cursor: pointer;
+      text-align: center;
+      width: 100%;
+    }
+
+    .lock-btn:hover { color: #888; }
+  </style>
+</head>
+<body>
+
+  <div class="logo">THE BEAR</div>
+  <h1>QR Code Switcher</h1>
+
+  <!-- PIN screen -->
+  <div id="pin-screen">
+    <p>Enter PIN to continue</p>
+    <input id="pin-input" type="password" inputmode="numeric" maxlength="4" placeholder="••••" autocomplete="off">
+    <div id="pin-error">Wrong PIN. Try again.</div>
+  </div>
+
+  <!-- Main screen -->
+  <div id="main-screen">
+    <div class="status-bar">
+      <span>Currently pointing to</span>
+      <div id="current-url">Loading…</div>
+    </div>
+
+    <div class="destinations" id="destinations"></div>
+
+    <div id="feedback"></div>
+
+    <button class="lock-btn" onclick="lock()">Lock</button>
+  </div>
+
+  <script>
+    // ── CONFIG ──────────────────────────────────────────────────────────────
+    const PIN = '0000'; // change before sharing
+
+    const HOVERCODE_API_KEY = '3c8316e6d23811eb679367385c22f279c0979bd5';
+    const HOVERCODE_ID      = '1ceb912a-650d-409d-bdbb-22ace47bcbcf';
+    const HOVERCODE_UPDATE  = `https://hovercode.com/api/v2/hovercode/${HOVERCODE_ID}/update/`;
+    const HOVERCODE_GET     = `https://hovercode.com/api/v2/hovercode/${HOVERCODE_ID}/`;
+
+    const DESTINATIONS = [
+      {
+        id: 'voting',
+        label: 'Voting Form',
+        url: 'https://tally.so/r/xVDrEk', // update each month to new form ID
+      },
+      {
+        id: 'linktree',
+        label: 'Linktree',
+        url: 'https://linktr.ee/thebearstorytelling',
+      },
+      {
+        id: 'website',
+        label: 'Website',
+        url: 'https://thebear-storytelling.de',
+      },
+    ];
+    // ────────────────────────────────────────────────────────────────────────
+
+    let activeUrl = null;
+
+    // PIN
+    const pinInput = document.getElementById('pin-input');
+    pinInput.addEventListener('input', () => {
+      document.getElementById('pin-error').style.display = 'none';
+      if (pinInput.value.length === 4) {
+        if (pinInput.value === PIN) {
+          document.getElementById('pin-screen').style.display = 'none';
+          document.getElementById('main-screen').style.display = 'block';
+          loadCurrentUrl();
+        } else {
+          document.getElementById('pin-error').style.display = 'block';
+          pinInput.value = '';
+        }
+      }
+    });
+
+    function lock() {
+      document.getElementById('pin-screen').style.display = 'flex';
+      document.getElementById('main-screen').style.display = 'none';
+      pinInput.value = '';
+    }
+
+    // Render destination buttons
+    const container = document.getElementById('destinations');
+    DESTINATIONS.forEach(dest => {
+      const btn = document.createElement('button');
+      btn.className = 'dest-btn';
+      btn.id = `btn-${dest.id}`;
+      btn.innerHTML = `
+        <div class="label">${dest.label}</div>
+        <div class="url">${dest.url}</div>
+        <div class="active-badge">● Currently active</div>
+      `;
+      btn.onclick = () => switchTo(dest);
+      container.appendChild(btn);
+    });
+
+    async function loadCurrentUrl() {
+      try {
+        const res = await fetch(HOVERCODE_GET, {
+          headers: { 'Authorization': `Token ${HOVERCODE_API_KEY}` }
+        });
+        const data = await res.json();
+        activeUrl = data.qr_data || data.destination_url || null;
+        updateUI();
+      } catch (e) {
+        document.getElementById('current-url').textContent = 'Unable to load';
+      }
+    }
+
+    function updateUI() {
+      document.getElementById('current-url').textContent = activeUrl || 'Unknown';
+      DESTINATIONS.forEach(dest => {
+        const btn = document.getElementById(`btn-${dest.id}`);
+        btn.classList.toggle('active', dest.url === activeUrl);
+      });
+    }
+
+    async function switchTo(dest) {
+      const feedback = document.getElementById('feedback');
+      feedback.className = '';
+      feedback.innerHTML = '<span class="spinner"></span> Updating…';
+
+      try {
+        const res = await fetch(HOVERCODE_UPDATE, {
+          method: 'POST',
+          headers: {
+            'Authorization': `Token ${HOVERCODE_API_KEY}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ qr_data: dest.url }),
+        });
+
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+        activeUrl = dest.url;
+        updateUI();
+        feedback.textContent = `✓ Switched to ${dest.label}`;
+        setTimeout(() => { feedback.textContent = ''; }, 3000);
+      } catch (e) {
+        feedback.className = 'error';
+        feedback.textContent = `Failed to update. Check connection.`;
+      }
+    }
+  </script>
+
+</body>
+</html>
