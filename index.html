@@ -184,6 +184,32 @@
     }
 
     .lock-btn:hover { color: #888; }
+
+    .qr-section {
+      margin-top: 28px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .qr-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: #17b9a8;
+    }
+
+    .qr-image {
+      width: 200px;
+      height: 200px;
+      border-radius: 12px;
+    }
+
+    .qr-url {
+      font-size: 13px;
+      color: #666;
+    }
   </style>
 </head>
 <body>
@@ -208,6 +234,12 @@
     <div class="destinations" id="destinations"></div>
 
     <div id="feedback"></div>
+
+    <div class="qr-section">
+      <p class="qr-label">Audience scan</p>
+      <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&color=17b9a8&bgcolor=1a1917&data=https://qrto.to/7b11bc19" alt="THE BEAR voting QR code" class="qr-image">
+      <p class="qr-url">qrto.to/7b11bc19</p>
+    </div>
 
     <button class="lock-btn" onclick="lock()">Lock</button>
   </div>
